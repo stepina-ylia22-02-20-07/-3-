@@ -15,7 +15,7 @@ bot = Bot(token="7618332820:AAGddQyYTTJqVZkibtrcwvAskWTdTAYzx3E")
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-age = ["Меньше 6", "От 12 до 16", "От 16 до 18",
+age = ["Меньше 6", "От 6 до 12", "От 12 до 16", "От 16 до 18",
        "От 18 до 25", "От 25 до 35", "От 35 до 45",
        "От 45 до 60", "От 60 до 70", "От 70 до 80",
        "От 80 до 100", "Больше 100"]
@@ -29,6 +29,11 @@ country = [
 ]
 
 gender = ["♂ Мужчина", "♀ Женщина"]
+
+person = []
+
+raight_answer = 0
+left_answer = 0
 
 
 def get_db_connection():
@@ -116,6 +121,7 @@ async def age_quiz(message: types.Message):
 
 @dp.message(F.text.in_(age))
 async def countries_quiz(message: types.Message):
+    person.append(str(message.text))
     countries = [
         {'emoji': '🇺🇸', 'name': 'США'}, {'emoji': '🇷🇺', 'name': 'Россия'},
         {'emoji': '🇵🇱', 'name': 'Польша'}, {'emoji': '🇨🇳', 'name': 'Китай'},
@@ -145,6 +151,7 @@ async def countries_quiz(message: types.Message):
 
 @dp.message(F.text.in_(country))
 async def countries_quiz(message: types.Message):
+    person.append(str(message.text))
     builder = ReplyKeyboardBuilder()
     builder.add(types.KeyboardButton(text="♂ Мужчина"))
     builder.add(types.KeyboardButton(text="♀ Женщина"))
@@ -153,6 +160,7 @@ async def countries_quiz(message: types.Message):
 
 @dp.message(F.text.in_(gender))
 async def countries_quiz(message: types.Message):
+    person.append(str(message.text))
     kb = [
         [
             types.KeyboardButton(text="Да, давайте!"),
@@ -170,7 +178,7 @@ async def countries_quiz(message: types.Message):
 @dp.message(F.text == "Да, давайте!")
 async def start_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
-    for i in ["Животные", "Космос", "Праздники", "Фильмы", "Подведем итоги"]:
+    for i in ["Животные", "Космос", "Праздники", "Фильмы", "Подведем итоги", "Ответы в опросе"]:
         builder.add(types.KeyboardButton(text=str(i)))
     builder.adjust(4)
     await message.answer(
@@ -179,8 +187,19 @@ async def start_quiz(message: types.Message):
     )
 
 
-"""@dp.message(F.text == "Подведем итоги")
-async def start_quiz(message: types.Message):"""
+@dp.message(F.text == "Ответы в опросе")
+async def without_puree(message: types.Message):
+    await message.answer(f"Так Вы ответили в анкете: \n"
+                         f"Возраст: {str(person[0])} \n"
+                         f"Страна: {str(person[1])} \n"
+                         f"Пол: {str(person[2])}")
+
+
+@dp.message(F.text == "Подведем итоги")
+async def without_puree(message: types.Message):
+    await message.answer(f"Ваш результат: \n"
+                         f"Правильных ответов: {raight_answer} \n"
+                         f"Неправильных ответов: {left_answer}")
 
 
 @dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
@@ -217,14 +236,17 @@ async def ask_question(message: types.Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("answer:"))
 async def process_answer(callback_query: types.CallbackQuery, state: FSMContext):
+    global raight_answer, left_answer
     user_answer = callback_query.data.split(":")[1]
 
     data = await state.get_data()
     correct_answer = data.get("correct_answer")
 
     if user_answer == correct_answer:
+        raight_answer += 1
         await callback_query.message.answer("Правильно!")
     else:
+        left_answer += 1
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
 
     await ask_question(callback_query.message, state)
