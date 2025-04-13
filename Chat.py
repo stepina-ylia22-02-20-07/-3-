@@ -80,7 +80,7 @@ async def cmd_start(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(
         keyboard=kb,
         resize_keyboard=True,
-        input_field_placeholder="Заполняем анкету?"
+        input_field_placeholder="Заполняем анкету"
     )
     await message.answer("Привет! Перед тем,как начать игру давайте заполним анкету для статистики",
                          reply_markup=keyboard)
