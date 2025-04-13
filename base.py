@@ -29,21 +29,31 @@ with open('questions.json', 'r', encoding='utf-8') as file:
     data = json.load(file)
 
 for item in data:
-    # Добавление вопроса
+    # Проверка, существует ли вопрос
     cursor.execute('''
-    INSERT INTO questions (theme, question_text, correct_answer)
-    VALUES (?, ?, ?)
+    SELECT id FROM questions
+    WHERE theme = ? AND question_text = ? AND correct_answer = ?
     ''', (item['theme'], item['question'], item['correct_answer']))
+    existing_question = cursor.fetchone()
 
-    # Получение ID последнего добавленного вопроса
-    question_id = cursor.lastrowid
-
-    # Добавление вариантов ответов
-    for option in item['options']:
+    if not existing_question:
+        # Добавление вопроса, если его нет в базе данных
         cursor.execute('''
-        INSERT INTO options (question_id, option_text)
-        VALUES (?, ?)
-        ''', (question_id, option))
+        INSERT INTO questions (theme, question_text, correct_answer)
+        VALUES (?, ?, ?)
+        ''', (item['theme'], item['question'], item['correct_answer']))
+
+        # Получение ID последнего добавленного вопроса
+        question_id = cursor.lastrowid
+
+        # Добавление вариантов ответов
+        for option in item['options']:
+            cursor.execute('''
+            INSERT INTO options (question_id, option_text)
+            VALUES (?, ?)
+            ''', (question_id, option))
+    else:
+        print(f"Вопрос уже существует: {item['question']}")
 
 # Сохранение изменений
 conn.commit()

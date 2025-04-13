@@ -32,8 +32,8 @@ gender = ["♂ Мужчина", "♀ Женщина"]
 
 person = []
 
-raight_answer = 0
-left_answer = 0
+right_answer = 0
+wrong_answer = 0
 
 
 def get_db_connection():
@@ -42,15 +42,27 @@ def get_db_connection():
     return conn
 
 
-def get_random_question(theme):
+def get_random_question(theme, used_questions):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-        SELECT id, question_text, correct_answer FROM questions
-        WHERE theme = ? ORDER BY RANDOM() LIMIT 1
-        ''', (theme,))
+        # Получаем случайный вопрос, исключая уже заданные
+        if used_questions:
+            placeholders = ','.join('?' for _ in used_questions)
+            query = f'''
+            SELECT id, question_text, correct_answer FROM questions
+            WHERE theme = ? AND id NOT IN ({placeholders})
+            ORDER BY RANDOM() LIMIT 1
+            '''
+            cursor.execute(query, (theme, *used_questions))
+        else:
+            cursor.execute('''
+            SELECT id, question_text, correct_answer FROM questions
+            WHERE theme = ?
+            ORDER BY RANDOM() LIMIT 1
+            ''', (theme,))
+
         question = cursor.fetchone()
 
         if question:
@@ -63,6 +75,7 @@ def get_random_question(theme):
 
             conn.close()
             return {
+                'id': question_id,
                 'question': question_text,
                 'options': options,
                 'correct_answer': correct_answer
@@ -87,25 +100,15 @@ async def cmd_start(message: types.Message):
         resize_keyboard=True,
         input_field_placeholder="Заполняем анкету"
     )
-    await message.answer("Привет! Перед тем,как начать игру давайте заполним анкету для статистики",
+    await message.answer("Привет! Перед тем, как начать игру, давайте заполним анкету для статистики",
                          reply_markup=keyboard)
 
 
 @dp.message(F.text == "Да")
 async def age_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
-    builder.add(types.KeyboardButton(text=("Меньше 6")))
-    builder.add(types.KeyboardButton(text=("От 6 до 12")))
-    builder.add(types.KeyboardButton(text=("От 12 до 16")))
-    builder.add(types.KeyboardButton(text=("От 16 до 18")))
-    builder.add(types.KeyboardButton(text=("От 18 до 25")))
-    builder.add(types.KeyboardButton(text=("От 25 до 35")))
-    builder.add(types.KeyboardButton(text=("От 35 до 45")))
-    builder.add(types.KeyboardButton(text=("От 45 до 60")))
-    builder.add(types.KeyboardButton(text=("От 60 до 70")))
-    builder.add(types.KeyboardButton(text=("От 70 до 80")))
-    builder.add(types.KeyboardButton(text=("От 80 до 100")))
-    builder.add(types.KeyboardButton(text=("Больше 100")))
+    for age_option in age:
+        builder.add(types.KeyboardButton(text=age_option))
     builder.adjust(4)
     await message.answer(
         "Какой у Вас возраст?",
@@ -115,51 +118,35 @@ async def age_quiz(message: types.Message):
 
 @dp.message(F.text == "Нет")
 async def age_quiz(message: types.Message):
-    await message.reply("Если все-таки зохотите поиграть, с нетерпением ждем Вас!",
+    await message.reply("Если все-таки захотите поиграть, с нетерпением ждем Вас!",
                         reply_markup=types.ReplyKeyboardRemove())
 
 
 @dp.message(F.text.in_(age))
 async def countries_quiz(message: types.Message):
     person.append(str(message.text))
-    countries = [
-        {'emoji': '🇺🇸', 'name': 'США'}, {'emoji': '🇷🇺', 'name': 'Россия'},
-        {'emoji': '🇵🇱', 'name': 'Польша'}, {'emoji': '🇨🇳', 'name': 'Китай'},
-        {'emoji': '🇦🇽', 'name': 'Швеция'}, {'emoji': '🇦🇲', 'name': 'Армения'},
-        {'emoji': '🇨🇿', 'name': 'Чехия'}, {'emoji': '🇩🇰', 'name': 'Дания'},
-        {'emoji': '🇯🇴', 'name': 'Палестина'}, {'emoji': '🇪🇪', 'name': 'Эстония'},
-        {'emoji': '🇪🇬', 'name': 'Египет'}, {'emoji': '🇧🇾', 'name': 'Беларусь'},
-        {'emoji': '🇧🇷', 'name': 'Бразилия'}, {'emoji': '🇨🇦', 'name': 'Канада'},
-        {'emoji': '🇫🇮', 'name': 'Финляндия'}, {'emoji': '🇫🇷', 'name': 'Франция'},
-        {'emoji': '🇬🇷', 'name': 'Греция'}, {'emoji': '🇩🇪', 'name': 'Германия'},
-        {'emoji': '🇬🇪', 'name': 'Грузия'}, {'emoji': '🇧🇬', 'name': 'Болгария'},
-        {'emoji': '🇷🇴', 'name': 'Румыния'}, {'emoji': '🇹🇷', 'name': 'Турция'},
-        {'emoji': '🇮🇹', 'name': 'Италия'}, {'emoji': '🇸🇰', 'name': 'Словакия'},
-        {'emoji': '🇸🇦', 'name': 'Саудовская аравия'}
-    ]
-
     builder = ReplyKeyboardBuilder()
-    for contry in countries:
-        builder.add(types.KeyboardButton(text=f"{contry['emoji']} {contry['name']}"))
+    for country_option in country:
+        builder.add(types.KeyboardButton(text=country_option))
     builder.adjust(5)
-
     await message.answer(
-        "Выберете из Вы какой страны",
+        "Из какой Вы страны?",
         reply_markup=builder.as_markup(resize_keyboard=True),
     )
 
 
 @dp.message(F.text.in_(country))
-async def countries_quiz(message: types.Message):
+async def gender_quiz(message: types.Message):
     person.append(str(message.text))
     builder = ReplyKeyboardBuilder()
-    builder.add(types.KeyboardButton(text="♂ Мужчина"))
-    builder.add(types.KeyboardButton(text="♀ Женщина"))
-    await message.answer("Какого Вы пола? ", reply_markup=builder.as_markup(one_time_keyboard=True))
+    for gender_option in gender:
+        builder.add(types.KeyboardButton(text=gender_option))
+    builder.adjust(2)
+    await message.answer("Какого Вы пола?", reply_markup=builder.as_markup(one_time_keyboard=True))
 
 
 @dp.message(F.text.in_(gender))
-async def countries_quiz(message: types.Message):
+async def start_game(message: types.Message):
     person.append(str(message.text))
     kb = [
         [
@@ -178,8 +165,8 @@ async def countries_quiz(message: types.Message):
 @dp.message(F.text == "Да, давайте!")
 async def start_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
-    for i in ["Животные", "Космос", "Праздники", "Фильмы", "Подведем итоги", "Ответы в опросе"]:
-        builder.add(types.KeyboardButton(text=str(i)))
+    for category in ["Животные", "Космос", "Праздники", "Фильмы", "Подведем итоги", "Ответы в опросе"]:
+        builder.add(types.KeyboardButton(text=category))
     builder.adjust(4)
     await message.answer(
         "Выберите категорию или узнайте о своих результатах:",
@@ -188,25 +175,26 @@ async def start_quiz(message: types.Message):
 
 
 @dp.message(F.text == "Ответы в опросе")
-async def without_puree(message: types.Message):
+async def show_survey_results(message: types.Message):
     await message.answer(f"Так Вы ответили в анкете: \n"
-                         f"Возраст: {str(person[0])} \n"
-                         f"Страна: {str(person[1])} \n"
-                         f"Пол: {str(person[2])}")
+                         f"Возраст: {person[0]} \n"
+                         f"Страна: {person[1]} \n"
+                         f"Пол: {person[2]}")
 
 
 @dp.message(F.text == "Подведем итоги")
-async def without_puree(message: types.Message):
+async def show_results(message: types.Message):
     await message.answer(f"Ваш результат: \n"
-                         f"Правильных ответов: {raight_answer} \n"
-                         f"Неправильных ответов: {left_answer}")
+                         f"Правильных ответов: {right_answer} \n"
+                         f"Неправильных ответов: {wrong_answer}")
 
 
 @dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
 async def category_selected(message: types.Message, state: FSMContext):
     theme = message.text
 
-    await state.update_data(theme=theme)
+    # Сохраняем выбранную категорию и пустой список заданных вопросов
+    await state.update_data(theme=theme, used_questions=[])
 
     await ask_question(message, state)
 
@@ -214,18 +202,29 @@ async def category_selected(message: types.Message, state: FSMContext):
 async def ask_question(message: types.Message, state: FSMContext):
     data = await state.get_data()
     theme = data.get("theme")
+    used_questions = data.get("used_questions", [])
 
-    question_data = get_random_question(theme)
+    # Отладочный вывод для проверки состояния
+    logging.info(f"Текущая тема: {theme}, Заданные вопросы: {used_questions}")
+
+    # Получаем случайный вопрос, исключая уже заданные
+    question_data = get_random_question(theme, used_questions)
 
     if question_data:
         question_text = question_data['question']
         options = question_data['options']
 
+        # Создание инлайн-клавиатуры с вариантами ответов
         builder = InlineKeyboardBuilder()
         for option in options:
             builder.add(InlineKeyboardButton(text=option, callback_data=f"answer:{option}"))
         builder.adjust(1)
 
+        # Обновляем список заданных вопросов
+        used_questions.append(question_data['id'])
+        await state.update_data(used_questions=used_questions)
+
+        # Сохраняем правильный ответ в состоянии
         await state.update_data(correct_answer=question_data['correct_answer'])
 
         await message.answer(f"Вопрос: {question_text}", reply_markup=builder.as_markup())
@@ -236,17 +235,17 @@ async def ask_question(message: types.Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("answer:"))
 async def process_answer(callback_query: types.CallbackQuery, state: FSMContext):
-    global raight_answer, left_answer
+    global right_answer, wrong_answer
     user_answer = callback_query.data.split(":")[1]
 
     data = await state.get_data()
     correct_answer = data.get("correct_answer")
 
     if user_answer == correct_answer:
-        raight_answer += 1
+        right_answer += 1
         await callback_query.message.answer("Правильно!")
     else:
-        left_answer += 1
+        wrong_answer += 1
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
 
     await ask_question(callback_query.message, state)
