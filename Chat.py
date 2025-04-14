@@ -10,15 +10,12 @@ from aiogram.fsm.storage.memory import MemoryStorage
 import sqlite3
 import requests
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
-# Инициализация бота и диспетчера
 bot = Bot(token="7618332820:AAGddQyYTTJqVZkibtrcwvAskWTdTAYzx3E")
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# Ваш API-ключ от Unsplash
 UNSPLASH_API_KEY = "AXg_aECrE8IObZN_wwtYlXFLGtX7_1oyeDe3sfOC5t8"
 
 
@@ -36,7 +33,7 @@ def get_image_url(query):
         }
         params = {
             "query": query,  # Ключевое слово для поиска
-            "per_page": 1,   # Только одно изображение
+            "per_page": 1,  # Только одно изображение
         }
         response = requests.get(url, headers=headers, params=params)
         data = response.json()
@@ -145,8 +142,18 @@ async def cmd_start(message: types.Message):
 @dp.message(F.text == "Да")
 async def age_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
-    for age_option in age:
-        builder.add(types.KeyboardButton(text=age_option))
+    builder.add(types.KeyboardButton(text=("Меньше 6")))
+    builder.add(types.KeyboardButton(text=("От 6 до 12")))
+    builder.add(types.KeyboardButton(text=("От 12 до 16")))
+    builder.add(types.KeyboardButton(text=("От 16 до 18")))
+    builder.add(types.KeyboardButton(text=("От 18 до 25")))
+    builder.add(types.KeyboardButton(text=("От 25 до 35")))
+    builder.add(types.KeyboardButton(text=("От 35 до 45")))
+    builder.add(types.KeyboardButton(text=("От 45 до 60")))
+    builder.add(types.KeyboardButton(text=("От 60 до 70")))
+    builder.add(types.KeyboardButton(text=("От 70 до 80")))
+    builder.add(types.KeyboardButton(text=("От 80 до 100")))
+    builder.add(types.KeyboardButton(text=("Больше 100")))
     builder.adjust(4)
     await message.answer(
         "Какой у Вас возраст?",
@@ -163,24 +170,40 @@ async def age_quiz(message: types.Message):
 @dp.message(F.text.in_(age))
 async def countries_quiz(message: types.Message):
     person.append(str(message.text))
+    countries = [
+        {'emoji': '🇺🇸', 'name': 'США'}, {'emoji': '🇷🇺', 'name': 'Россия'},
+        {'emoji': '🇵🇱', 'name': 'Польша'}, {'emoji': '🇨🇳', 'name': 'Китай'},
+        {'emoji': '🇦🇽', 'name': 'Швеция'}, {'emoji': '🇦🇲', 'name': 'Армения'},
+        {'emoji': '🇨🇿', 'name': 'Чехия'}, {'emoji': '🇩🇰', 'name': 'Дания'},
+        {'emoji': '🇯🇴', 'name': 'Палестина'}, {'emoji': '🇪🇪', 'name': 'Эстония'},
+        {'emoji': '🇪🇬', 'name': 'Египет'}, {'emoji': '🇧🇾', 'name': 'Беларусь'},
+        {'emoji': '🇧🇷', 'name': 'Бразилия'}, {'emoji': '🇨🇦', 'name': 'Канада'},
+        {'emoji': '🇫🇮', 'name': 'Финляндия'}, {'emoji': '🇫🇷', 'name': 'Франция'},
+        {'emoji': '🇬🇷', 'name': 'Греция'}, {'emoji': '🇩🇪', 'name': 'Германия'},
+        {'emoji': '🇬🇪', 'name': 'Грузия'}, {'emoji': '🇧🇬', 'name': 'Болгария'},
+        {'emoji': '🇷🇴', 'name': 'Румыния'}, {'emoji': '🇹🇷', 'name': 'Турция'},
+        {'emoji': '🇮🇹', 'name': 'Италия'}, {'emoji': '🇸🇰', 'name': 'Словакия'},
+        {'emoji': '🇸🇦', 'name': 'Саудовская аравия'}
+    ]
+
     builder = ReplyKeyboardBuilder()
-    for country_option in country:
-        builder.add(types.KeyboardButton(text=country_option))
+    for contry in countries:
+        builder.add(types.KeyboardButton(text=f"{contry['emoji']} {contry['name']}"))
     builder.adjust(5)
+
     await message.answer(
-        "Из какой Вы страны?",
+        "Выберете из Вы какой страны",
         reply_markup=builder.as_markup(resize_keyboard=True),
     )
 
 
 @dp.message(F.text.in_(country))
-async def gender_quiz(message: types.Message):
+async def countries_quiz(message: types.Message):
     person.append(str(message.text))
     builder = ReplyKeyboardBuilder()
-    for gender_option in gender:
-        builder.add(types.KeyboardButton(text=gender_option))
-    builder.adjust(2)
-    await message.answer("Какого Вы пола?", reply_markup=builder.as_markup(one_time_keyboard=True))
+    builder.add(types.KeyboardButton(text="♂ Мужчина"))
+    builder.add(types.KeyboardButton(text="♀ Женщина"))
+    await message.answer("Какого Вы пола? ", reply_markup=builder.as_markup(one_time_keyboard=True))
 
 
 @dp.message(F.text.in_(gender))
@@ -273,28 +296,19 @@ async def ask_question(message: types.Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("answer:"))
 async def process_answer(callback_query: types.CallbackQuery, state: FSMContext):
-    user_answer = callback_query.data.split(":")[1]  # Ответ пользователя
+    global raight_answer, wrong_answer
+    user_answer = callback_query.data.split(":")[1]
 
     data = await state.get_data()
     correct_answer = data.get("correct_answer")
 
     if user_answer == correct_answer:
+        raight_answer += 1
         await callback_query.message.answer("Правильно!")
     else:
+        wrong_answer += 1
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
 
-    # Получаем изображение для правильного ответа
-    image_url = get_image_url(correct_answer)
-
-    if image_url:
-        await callback_query.message.answer_photo(
-            photo=image_url,
-            caption=f"Вот изображение для '{correct_answer}':"
-        )
-    else:
-        await callback_query.message.answer("Извините, не удалось найти изображение.")
-
-    # Задаем следующий вопрос
     await ask_question(callback_query.message, state)
 
 
