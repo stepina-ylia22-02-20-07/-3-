@@ -8,12 +8,50 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.fsm.storage.memory import MemoryStorage
 import sqlite3
+import requests
 
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
+# Инициализация бота и диспетчера
 bot = Bot(token="7618332820:AAGddQyYTTJqVZkibtrcwvAskWTdTAYzx3E")
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
+
+# Ваш API-ключ от Unsplash
+UNSPLASH_API_KEY = "AXg_aECrE8IObZN_wwtYlXFLGtX7_1oyeDe3sfOC5t8"
+
+
+def get_image_url(query):
+    try:
+        # Добавляем контекст к запросу
+        if query.lower() in ["меркурий", "венера", "земля", "марс"]:
+            query = f"планета {query}"
+        elif query.lower() in ["тигр", "лев", "леопард"]:
+            query = f"животное {query}"
+
+        url = "https://api.unsplash.com/search/photos"
+        headers = {
+            "Authorization": f"Client-ID {UNSPLASH_API_KEY}"
+        }
+        params = {
+            "query": query,  # Ключевое слово для поиска
+            "per_page": 1,   # Только одно изображение
+        }
+        response = requests.get(url, headers=headers, params=params)
+        data = response.json()
+
+        # Отладочный вывод
+        logging.info(f"Результат запроса к Unsplash API: {data}")
+
+        if data.get("results"):
+            return data["results"][0]["urls"]["regular"]  # URL изображения среднего размера
+        else:
+            return None
+    except Exception as e:
+        logging.error(f"Ошибка при запросе к Unsplash API: {e}")
+        return None
+
 
 age = ["Меньше 6", "От 6 до 12", "От 12 до 16", "От 16 до 18",
        "От 18 до 25", "От 25 до 35", "От 35 до 45",
@@ -235,19 +273,28 @@ async def ask_question(message: types.Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("answer:"))
 async def process_answer(callback_query: types.CallbackQuery, state: FSMContext):
-    global right_answer, wrong_answer
-    user_answer = callback_query.data.split(":")[1]
+    user_answer = callback_query.data.split(":")[1]  # Ответ пользователя
 
     data = await state.get_data()
     correct_answer = data.get("correct_answer")
 
     if user_answer == correct_answer:
-        right_answer += 1
         await callback_query.message.answer("Правильно!")
     else:
-        wrong_answer += 1
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
 
+    # Получаем изображение для правильного ответа
+    image_url = get_image_url(correct_answer)
+
+    if image_url:
+        await callback_query.message.answer_photo(
+            photo=image_url,
+            caption=f"Вот изображение для '{correct_answer}':"
+        )
+    else:
+        await callback_query.message.answer("Извините, не удалось найти изображение.")
+
+    # Задаем следующий вопрос
     await ask_question(callback_query.message, state)
 
 
