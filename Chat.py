@@ -171,18 +171,30 @@ async def age_quiz(message: types.Message):
 async def countries_quiz(message: types.Message):
     person.append(str(message.text))
     countries = [
-        {'emoji': '🇺🇸', 'name': 'США'}, {'emoji': '🇷🇺', 'name': 'Россия'},
-        {'emoji': '🇵🇱', 'name': 'Польша'}, {'emoji': '🇨🇳', 'name': 'Китай'},
-        {'emoji': '🇦🇽', 'name': 'Швеция'}, {'emoji': '🇦🇲', 'name': 'Армения'},
-        {'emoji': '🇨🇿', 'name': 'Чехия'}, {'emoji': '🇩🇰', 'name': 'Дания'},
-        {'emoji': '🇯🇴', 'name': 'Палестина'}, {'emoji': '🇪🇪', 'name': 'Эстония'},
-        {'emoji': '🇪🇬', 'name': 'Египет'}, {'emoji': '🇧🇾', 'name': 'Беларусь'},
-        {'emoji': '🇧🇷', 'name': 'Бразилия'}, {'emoji': '🇨🇦', 'name': 'Канада'},
-        {'emoji': '🇫🇮', 'name': 'Финляндия'}, {'emoji': '🇫🇷', 'name': 'Франция'},
-        {'emoji': '🇬🇷', 'name': 'Греция'}, {'emoji': '🇩🇪', 'name': 'Германия'},
-        {'emoji': '🇬🇪', 'name': 'Грузия'}, {'emoji': '🇧🇬', 'name': 'Болгария'},
-        {'emoji': '🇷🇴', 'name': 'Румыния'}, {'emoji': '🇹🇷', 'name': 'Турция'},
-        {'emoji': '🇮🇹', 'name': 'Италия'}, {'emoji': '🇸🇰', 'name': 'Словакия'},
+        {'emoji': '🇺🇸', 'name': 'США'},
+        {'emoji': '🇷🇺', 'name': 'Россия'},
+        {'emoji': '🇵🇱', 'name': 'Польша'},
+        {'emoji': '🇨🇳', 'name': 'Китай'},
+        {'emoji': '🇦🇽', 'name': 'Швеция'},
+        {'emoji': '🇦🇲', 'name': 'Армения'},
+        {'emoji': '🇨🇿', 'name': 'Чехия'},
+        {'emoji': '🇩🇰', 'name': 'Дания'},
+        {'emoji': '🇯🇴', 'name': 'Палестина'},
+        {'emoji': '🇪🇪', 'name': 'Эстония'},
+        {'emoji': '🇪🇬', 'name': 'Египет'},
+        {'emoji': '🇧🇾', 'name': 'Беларусь'},
+        {'emoji': '🇧🇷', 'name': 'Бразилия'},
+        {'emoji': '🇨🇦', 'name': 'Канада'},
+        {'emoji': '🇫🇮', 'name': 'Финляндия'},
+        {'emoji': '🇫🇷', 'name': 'Франция'},
+        {'emoji': '🇬🇷', 'name': 'Греция'},
+        {'emoji': '🇩🇪', 'name': 'Германия'},
+        {'emoji': '🇬🇪', 'name': 'Грузия'},
+        {'emoji': '🇧🇬', 'name': 'Болгария'},
+        {'emoji': '🇷🇴', 'name': 'Румыния'},
+        {'emoji': '🇹🇷', 'name': 'Турция'},
+        {'emoji': '🇮🇹', 'name': 'Италия'},
+        {'emoji': '🇸🇰', 'name': 'Словакия'},
         {'emoji': '🇸🇦', 'name': 'Саудовская аравия'}
     ]
 
@@ -226,7 +238,9 @@ async def start_game(message: types.Message):
 @dp.message(F.text == "Да, давайте!")
 async def start_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
-    for category in ["Животные", "Космос", "Праздники", "Фильмы", "Подведем итоги", "Ответы в опросе"]:
+    for category in ["Животные", "Космос",
+                     "Праздники", "Фильмы",
+                     "Подведем итоги", "Ответы в опросе"]:
         builder.add(types.KeyboardButton(text=category))
     builder.adjust(4)
     await message.answer(
@@ -304,9 +318,11 @@ async def process_answer(callback_query: types.CallbackQuery, state: FSMContext)
 
     if user_answer == correct_answer:
         right_answer += 1
+        
         await callback_query.message.answer("Правильно!")
     else:
         wrong_answer += 1
+        
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
 
     await ask_question(callback_query.message, state)
