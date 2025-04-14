@@ -296,14 +296,14 @@ async def ask_question(message: types.Message, state: FSMContext):
 
 @dp.callback_query(lambda c: c.data.startswith("answer:"))
 async def process_answer(callback_query: types.CallbackQuery, state: FSMContext):
-    global raight_answer, wrong_answer
+    global right_answer, wrong_answer
     user_answer = callback_query.data.split(":")[1]
 
     data = await state.get_data()
     correct_answer = data.get("correct_answer")
 
     if user_answer == correct_answer:
-        raight_answer += 1
+        right_answer += 1
         await callback_query.message.answer("Правильно!")
     else:
         wrong_answer += 1
