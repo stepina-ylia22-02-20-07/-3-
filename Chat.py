@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from urllib.request import urlopen
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
@@ -50,10 +52,11 @@ def get_image_url(query):
         return None
 
 
-age = ["Меньше 6", "От 6 до 12", "От 12 до 16", "От 16 до 18",
-       "От 18 до 25", "От 25 до 35", "От 35 до 45",
-       "От 45 до 60", "От 60 до 70", "От 70 до 80",
-       "От 80 до 100", "Больше 100"]
+age = ["Меньше 6", "От 6 до 12", "От 12 до 16",
+       "От 16 до 18", "От 18 до 25",
+       "От 25 до 35", "От 35 до 45",
+       "От 45 до 60", "От 60 до 70",
+       "От 70 до 80", "От 80 до 100", "Больше 100"]
 
 country = [
     "🇺🇸 США", "🇷🇺 Россия", "🇵🇱 Польша", "🇨🇳 Китай", "🇦🇽 Швеция",
@@ -135,6 +138,9 @@ async def cmd_start(message: types.Message):
         resize_keyboard=True,
         input_field_placeholder="Заполняем анкету"
     )
+    await bot.send_photo(message.chat.id,
+                         "https://media.istockphoto.com/id/918091386/es/vector/robot-y-mano-temblorosa.jpg?s=170667a&w=0&k=20&c=YthLdizQavv8mfLhtbhF9fpnLJ1nmRnA5_e6UfgnH44=")
+
     await message.answer("Привет! Меня зовут TestIntelligence_bot. \n"
                          "Добро пожаловать в захватывающий мир квизов!!! 🎉 \n"
                          "Перед тем, как начать игру, давайте заполним анкету для статистики",
@@ -241,7 +247,7 @@ async def start_game(message: types.Message):
 async def start_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
     for category in ["Животные", "Космос",
-                     "Праздники", "Фильмы",
+                     "Праздники", "Фильмы", "Все категории",
                      "Подведем итоги", "Ответы в опросе"]:
         builder.add(types.KeyboardButton(text=category))
     builder.adjust(4)
@@ -257,6 +263,11 @@ async def show_survey_results(message: types.Message):
                          f"Возраст: {person[0]} \n"
                          f"Страна: {person[1]} \n"
                          f"Пол: {person[2]}")
+
+    user_one = ["Новый игрок:\n", f"Возраст: {person[0]}\n", f"Страна: {person[1]}\n", f"Пол: {str(person[2])} \n"]
+    file = open("statistics.txt", "w", encoding="utf-8")
+    file.writelines(user_one)
+    file.close()
 
 
 @dp.message(F.text == "Подведем итоги")
@@ -276,6 +287,10 @@ async def show_results(message: types.Message):
                              f"Правильных ответов: {right_answer} \n"
                              f"Неправильных ответов: {wrong_answer} \n"
                              f"Все еще впереди!")
+
+
+'''@dp.message(F.text == "Все категории", )
+async def show_survey_results(message: types.Message, state: FSMContext):'''
 
 
 @dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
