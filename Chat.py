@@ -9,6 +9,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.fsm.storage.memory import MemoryStorage
+from base import initialize_database
 import sqlite3
 import requests
 
@@ -20,6 +21,7 @@ dp = Dispatcher(storage=storage)
 
 UNSPLASH_API_KEY = "AXg_aECrE8IObZN_wwtYlXFLGtX7_1oyeDe3sfOC5t8"
 
+initialize_database()
 
 def get_image_url(query):
     try:
@@ -289,8 +291,44 @@ async def show_results(message: types.Message):
                              f"Все еще впереди!")
 
 
-'''@dp.message(F.text == "Все категории", )
-async def show_survey_results(message: types.Message, state: FSMContext):'''
+@dp.message(F.text == "Все категории")
+async def all_categories_quiz(message: types.Message, state: FSMContext):
+    # Сохраняем пустой список заданных вопросов
+    await state.update_data(theme="Все категории", used_questions=[])
+
+    await ask_question_all_themes(message, state)
+
+
+async def ask_question_all_themes(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    used_questions = data.get("used_questions", [])
+
+    # Получаем случайный вопрос из всех категорий, исключая уже заданные
+    question_data = get_random_question_all_themes(used_questions)
+
+    if question_data:
+        question_text = question_data['question']
+        options = question_data['options']
+
+        # Создание инлайн-клавиатуры с вариантами ответов
+        builder = InlineKeyboardBuilder()
+        for option in options:
+            builder.add(InlineKeyboardButton(text=option, callback_data=f"answer:{option}"))
+        builder.adjust(1)
+
+        # Обновляем список заданных вопросов
+        used_questions.append(question_data['id'])
+
+        # Сохраняем обновленный список заданных вопросов в состоянии
+        await state.update_data(used_questions=used_questions)
+
+        # Сохраняем правильный ответ в состоянии
+        await state.update_data(correct_answer=question_data['correct_answer'])
+
+        await message.answer(f"Вопрос: {question_text}", reply_markup=builder.as_markup())
+    else:
+        await message.answer("Вопросы закончились! Спасибо за игру!")
+        await state.clear()
 
 
 @dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
@@ -301,6 +339,50 @@ async def category_selected(message: types.Message, state: FSMContext):
     await state.update_data(theme=theme, used_questions=[])
 
     await ask_question(message, state)
+
+
+def get_random_question_all_themes(used_questions):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Получаем случайный вопрос из всех категорий, исключая уже заданные
+        if used_questions:
+            placeholders = ','.join('?' for _ in used_questions)
+            query = f'''
+            SELECT id, question_text, correct_answer FROM questions
+            WHERE id NOT IN ({placeholders})
+            ORDER BY RANDOM() LIMIT 1
+            '''
+            cursor.execute(query, (*used_questions,))
+        else:
+            cursor.execute('''
+            SELECT id, question_text, correct_answer FROM questions
+            ORDER BY RANDOM() LIMIT 1
+            ''')
+
+        question = cursor.fetchone()
+
+        if question:
+            question_id, question_text, correct_answer = question
+
+            cursor.execute('''
+            SELECT option_text FROM options WHERE question_id = ?
+            ''', (question_id,))
+            options = [row['option_text'] for row in cursor.fetchall()]
+
+            conn.close()
+            return {
+                'id': question_id,
+                'question': question_text,
+                'options': options,
+                'correct_answer': correct_answer
+            }
+        conn.close()
+        return None
+    except Exception as e:
+        logging.error(f"Ошибка при получении вопроса: {e}")
+        return None
 
 
 async def ask_question(message: types.Message, state: FSMContext):
@@ -326,6 +408,8 @@ async def ask_question(message: types.Message, state: FSMContext):
 
         # Обновляем список заданных вопросов
         used_questions.append(question_data['id'])
+
+        # Сохраняем обновленный список заданных вопросов в состоянии
         await state.update_data(used_questions=used_questions)
 
         # Сохраняем правильный ответ в состоянии
