@@ -135,7 +135,9 @@ async def cmd_start(message: types.Message):
         resize_keyboard=True,
         input_field_placeholder="Заполняем анкету"
     )
-    await message.answer("Привет! Перед тем, как начать игру, давайте заполним анкету для статистики",
+    await message.answer("Привет! Меня зовут TestIntelligence_bot. \n"
+                         "Добро пожаловать в захватывающий мир квизов!!! 🎉 \n"
+                         "Перед тем, как начать игру, давайте заполним анкету для статистики",
                          reply_markup=keyboard)
 
 
@@ -259,9 +261,21 @@ async def show_survey_results(message: types.Message):
 
 @dp.message(F.text == "Подведем итоги")
 async def show_results(message: types.Message):
-    await message.answer(f"Ваш результат: \n"
-                         f"Правильных ответов: {right_answer} \n"
-                         f"Неправильных ответов: {wrong_answer}")
+    if right_answer > wrong_answer:
+        await message.answer(f"Ваш результат: \n"
+                             f"Правильных ответов: {right_answer} \n"
+                             f"Неправильных ответов: {wrong_answer} \n"
+                             f"Так держать!")
+    elif right_answer == wrong_answer:
+        await message.answer(f"Ваш результат: \n"
+                             f"Правильных ответов: {right_answer} \n"
+                             f"Неправильных ответов: {wrong_answer} \n"
+                             f"Стоит поднажать!")
+    else:
+        await message.answer(f"Ваш результат: \n"
+                             f"Правильных ответов: {right_answer} \n"
+                             f"Неправильных ответов: {wrong_answer} \n"
+                             f"Все еще впереди!")
 
 
 @dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
@@ -318,11 +332,11 @@ async def process_answer(callback_query: types.CallbackQuery, state: FSMContext)
 
     if user_answer == correct_answer:
         right_answer += 1
-        
+
         await callback_query.message.answer("Правильно!")
     else:
         wrong_answer += 1
-        
+
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
 
     await ask_question(callback_query.message, state)
