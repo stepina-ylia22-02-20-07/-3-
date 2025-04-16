@@ -23,14 +23,28 @@ UNSPLASH_API_KEY = "AXg_aECrE8IObZN_wwtYlXFLGtX7_1oyeDe3sfOC5t8"
 
 initialize_database()
 
+
 def get_image_url(query):
     try:
         # Добавляем контекст к запросу
-        if query.lower() in ["меркурий", "венера", "земля", "марс"]:
-            query = f"планета {query}"
+        if query.lower() in ["меркурий", "венера", "земля", "сатурн"]:
+            query = f"звезды {query}"
+        elif query.lower() in ["валентина терешкова"]:
+            query = f"космонавт {query}"
+        elif query.lower() in ["паразиты"]:
+            query = f"кинотеатр {query}"
+        elif query.lower() in ["люк бессон", "хит леджер"]:
+            query = f"фильм {query}"
+        elif query.lower() in ["святой николай"]:
+            query = f"новый год {query}"
+        elif query.lower() in ["четыре", "марс"]:
+            query = f"марс {query}"
+        elif query.lower() in ["валентина терешкова"]:
+            query = f"космонавт {query}"
         elif query.lower() in ["тигр", "лев", "леопард"]:
             query = f"животное {query}"
-
+        elif query.lower() in ["хэллоуин", "день святого валентина", "рождество", "новый год"]:
+            query = f"праздник {query}"
         url = "https://api.unsplash.com/search/photos"
         headers = {
             "Authorization": f"Client-ID {UNSPLASH_API_KEY}"
@@ -408,8 +422,6 @@ async def ask_question(message: types.Message, state: FSMContext):
 
         # Обновляем список заданных вопросов
         used_questions.append(question_data['id'])
-
-        # Сохраняем обновленный список заданных вопросов в состоянии
         await state.update_data(used_questions=used_questions)
 
         # Сохраняем правильный ответ в состоянии
@@ -437,6 +449,16 @@ async def process_answer(callback_query: types.CallbackQuery, state: FSMContext)
         wrong_answer += 1
 
         await callback_query.message.answer(f"Неправильно! Правильный ответ: {correct_answer}")
+
+        image_url = get_image_url(correct_answer)
+
+        if image_url:
+            await callback_query.message.answer_photo(
+                photo=image_url,
+                caption=f"Вот изображение для '{correct_answer}':"
+            )
+        else:
+            await callback_query.message.answer("Извините, не удалось найти изображение.")
 
     await ask_question(callback_query.message, state)
 
