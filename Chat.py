@@ -29,22 +29,34 @@ def get_image_url(query):
         # Добавляем контекст к запросу
         if query.lower() in ["меркурий", "венера", "земля", "сатурн"]:
             query = f"звезды {query}"
+
         elif query.lower() in ["валентина терешкова"]:
             query = f"космонавт {query}"
+
         elif query.lower() in ["паразиты"]:
             query = f"кинотеатр {query}"
+
         elif query.lower() in ["люк бессон", "хит леджер"]:
             query = f"фильм {query}"
+
         elif query.lower() in ["святой николай"]:
             query = f"новый год {query}"
+
         elif query.lower() in ["четыре", "марс"]:
             query = f"марс {query}"
+
         elif query.lower() in ["валентина терешкова"]:
             query = f"космонавт {query}"
-        elif query.lower() in ["тигр", "лев", "леопард"]:
-            query = f"животное {query}"
+
+        elif query.lower() in ["тигр", "лев", "леопард", "гепард"]:
+            query = f"кошка {query}"
+
         elif query.lower() in ["хэллоуин", "день святого валентина", "рождество", "новый год"]:
             query = f"праздник {query}"
+
+        elif query.lower() in ["синего", "выдры"]:
+            query = f"вода {query}"
+
         url = "https://api.unsplash.com/search/photos"
         headers = {
             "Authorization": f"Client-ID {UNSPLASH_API_KEY}"
@@ -75,11 +87,14 @@ age = ["Меньше 6", "От 6 до 12", "От 12 до 16",
        "От 70 до 80", "От 80 до 100", "Больше 100"]
 
 country = [
-    "🇺🇸 США", "🇷🇺 Россия", "🇵🇱 Польша", "🇨🇳 Китай", "🇦🇽 Швеция",
-    "🇦🇲 Армения", "🇨🇿 Чехия", "🇩🇰 Дания", "🇯🇴 Палестина", "🇪🇪 Эстония",
-    "🇪🇬 Египет", "🇧🇾 Беларусь", "🇧🇷 Бразилия", "🇨🇦 Канада", "🇫🇮 Финляндия",
-    "🇫🇷 Франция", "🇬🇷 Греция", "🇩🇪 Германия", "🇬🇪 Грузия", "🇧🇬 Болгария",
-    "🇷🇴 Румыния", "🇹🇷 Турция", "🇮🇹 Италия", "🇸🇰 Словакия", "🇸🇦 Саудовская аравия"
+    "🇺🇸 США", "🇷🇺 Россия", "🇵🇱 Польша",
+    "🇨🇳 Китай", "🇦🇽 Швеция", "🇦🇲 Армения",
+    "🇨🇿 Чехия", "🇩🇰 Дания", "🇯🇴 Палестина",
+    "🇪🇪 Эстония", "🇪🇬 Египет", "🇧🇾 Беларусь",
+    "🇧🇷 Бразилия", "🇨🇦 Канада", "🇫🇮 Финляндия",
+    "🇫🇷 Франция", "🇬🇷 Греция", "🇩🇪 Германия",
+    "🇬🇪 Грузия", "🇧🇬 Болгария", "🇷🇴 Румыния",
+    "🇹🇷 Турция", "🇮🇹 Италия", "🇸🇰 Словакия", "🇸🇦 Саудовская аравия"
 ]
 
 gender = ["♂ Мужчина", "♀ Женщина"]
@@ -143,6 +158,8 @@ def get_random_question(theme, used_questions):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    global person
+    person = []
     kb = [
         [
             types.KeyboardButton(text="Да"),
@@ -263,7 +280,8 @@ async def start_game(message: types.Message):
 async def start_quiz(message: types.Message):
     builder = ReplyKeyboardBuilder()
     for category in ["Животные", "Космос",
-                     "Праздники", "Фильмы", "Все категории",
+                     "Праздники", "Фильмы",
+                     "Все категории",
                      "Подведем итоги", "Ответы в опросе"]:
         builder.add(types.KeyboardButton(text=category))
     builder.adjust(4)
@@ -280,7 +298,10 @@ async def show_survey_results(message: types.Message):
                          f"Страна: {person[1]} \n"
                          f"Пол: {person[2]}")
 
-    user_one = ["Новый игрок:\n", f"Возраст: {person[0]}\n", f"Страна: {person[1]}\n", f"Пол: {str(person[2])} \n"]
+    user_one = ["Новый игрок:\n",
+                f"Возраст: {person[0]}\n",
+                f"Страна: {person[1]}\n",
+                f"Пол: {str(person[2])} \n"]
     file = open("statistics.txt", "w", encoding="utf-8")
     file.writelines(user_one)
     file.close()
@@ -307,18 +328,34 @@ async def show_results(message: types.Message):
 
 @dp.message(F.text == "Все категории")
 async def all_categories_quiz(message: types.Message, state: FSMContext):
-    # Сохраняем пустой список заданных вопросов
-    await state.update_data(theme="Все категории", used_questions=[])
+    theme = message.text
 
-    await ask_question_all_themes(message, state)
+    # Сохраняем выбранную категорию и пустой список заданных вопросов
+    await state.update_data(theme=theme, used_questions=[])
+
+    await ask_question_all(message, state)
 
 
-async def ask_question_all_themes(message: types.Message, state: FSMContext):
+@dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
+async def category_selected(message: types.Message, state: FSMContext):
+    theme = message.text
+
+    # Сохраняем выбранную категорию и пустой список заданных вопросов
+    await state.update_data(theme=theme, used_questions=[])
+
+    await ask_question(message, state)
+
+
+async def ask_question(message: types.Message, state: FSMContext):
     data = await state.get_data()
+    theme = data.get("theme")
     used_questions = data.get("used_questions", [])
 
-    # Получаем случайный вопрос из всех категорий, исключая уже заданные
-    question_data = get_random_question_all_themes(used_questions)
+    # Отладочный вывод для проверки состояния
+    logging.info(f"Текущая тема: {theme}, Заданные вопросы: {used_questions}")
+
+    # Получаем случайный вопрос, исключая уже заданные
+    question_data = get_random_question(theme, used_questions)
 
     if question_data:
         question_text = question_data['question']
@@ -332,8 +369,6 @@ async def ask_question_all_themes(message: types.Message, state: FSMContext):
 
         # Обновляем список заданных вопросов
         used_questions.append(question_data['id'])
-
-        # Сохраняем обновленный список заданных вопросов в состоянии
         await state.update_data(used_questions=used_questions)
 
         # Сохраняем правильный ответ в состоянии
@@ -341,65 +376,11 @@ async def ask_question_all_themes(message: types.Message, state: FSMContext):
 
         await message.answer(f"Вопрос: {question_text}", reply_markup=builder.as_markup())
     else:
-        await message.answer("Вопросы закончились! Спасибо за игру!")
+        await message.answer("Вопросы по этой категории закончились! Спасибо за игру!")
         await state.clear()
 
 
-@dp.message(F.text.in_(["Животные", "Космос", "Праздники", "Фильмы"]))
-async def category_selected(message: types.Message, state: FSMContext):
-    theme = message.text
-
-    # Сохраняем выбранную категорию и пустой список заданных вопросов
-    await state.update_data(theme=theme, used_questions=[])
-
-    await ask_question(message, state)
-
-
-def get_random_question_all_themes(used_questions):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Получаем случайный вопрос из всех категорий, исключая уже заданные
-        if used_questions:
-            placeholders = ','.join('?' for _ in used_questions)
-            query = f'''
-            SELECT id, question_text, correct_answer FROM questions
-            WHERE id NOT IN ({placeholders})
-            ORDER BY RANDOM() LIMIT 1
-            '''
-            cursor.execute(query, (*used_questions,))
-        else:
-            cursor.execute('''
-            SELECT id, question_text, correct_answer FROM questions
-            ORDER BY RANDOM() LIMIT 1
-            ''')
-
-        question = cursor.fetchone()
-
-        if question:
-            question_id, question_text, correct_answer = question
-
-            cursor.execute('''
-            SELECT option_text FROM options WHERE question_id = ?
-            ''', (question_id,))
-            options = [row['option_text'] for row in cursor.fetchall()]
-
-            conn.close()
-            return {
-                'id': question_id,
-                'question': question_text,
-                'options': options,
-                'correct_answer': correct_answer
-            }
-        conn.close()
-        return None
-    except Exception as e:
-        logging.error(f"Ошибка при получении вопроса: {e}")
-        return None
-
-
-async def ask_question(message: types.Message, state: FSMContext):
+async def ask_question_all(message: types.Message, state: FSMContext):
     data = await state.get_data()
     theme = data.get("theme")
     used_questions = data.get("used_questions", [])
