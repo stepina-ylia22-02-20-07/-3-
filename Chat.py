@@ -1,15 +1,16 @@
 import asyncio
 import logging
 from urllib.request import urlopen
-
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import F
+from aiogram.fsm.state import State
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.fsm.storage.memory import MemoryStorage
 from base import initialize_database
+from aiogram.fsm.state import StatesGroup, State
 import sqlite3
 import requests
 
@@ -22,6 +23,11 @@ dp = Dispatcher(storage=storage)
 UNSPLASH_API_KEY = "AXg_aECrE8IObZN_wwtYlXFLGtX7_1oyeDe3sfOC5t8"
 
 initialize_database()
+
+
+# Определяем состояния
+class FMSFillform(StatesGroup):
+    fill_name = State()
 
 
 def get_image_url(query):
@@ -104,6 +110,8 @@ person = []
 right_answer = 0
 wrong_answer = 0
 
+name = ""
+
 
 def get_db_connection():
     conn = sqlite3.connect('quiz.db')
@@ -181,7 +189,15 @@ async def cmd_start(message: types.Message):
 
 
 @dp.message(F.text == "Да")
-async def age_quiz(message: types.Message):
+async def start_opros_quiz(message: types.Message, state: FSMContext):
+    await message.answer("Привет! Как тебя зовут?")
+    await state.set_state(FMSFillform.fill_name)
+
+
+@dp.message(FMSFillform.fill_name)
+async def process_name(message: types.Message):
+    user_name = message.text
+    await message.reply(f"{user_name}, у тебя очень красивое имя!")
     builder = ReplyKeyboardBuilder()
     builder.add(types.KeyboardButton(text=("Меньше 6")))
     builder.add(types.KeyboardButton(text=("От 6 до 12")))
@@ -203,7 +219,7 @@ async def age_quiz(message: types.Message):
 
 
 @dp.message(F.text == "Нет")
-async def age_quiz(message: types.Message):
+async def stop_quiz(message: types.Message):
     await message.reply("Если все-таки захотите поиграть, с нетерпением ждем Вас!",
                         reply_markup=types.ReplyKeyboardRemove())
 
