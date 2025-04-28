@@ -1,66 +1,68 @@
-# database.py
-import sqlite3
 import json
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+
+Base = declarative_base()
+
+
+class Question(Base):
+    __tablename__ = 'questions'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    theme = Column(String, nullable=False)
+    question_text = Column(String, nullable=False)
+    correct_answer = Column(String, nullable=False)
+
+    options = relationship("Option", back_populates="question")
+
+
+class Option(Base):
+    __tablename__ = 'options'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    question_id = Column(Integer, ForeignKey('questions.id'), nullable=False)
+    option_text = Column(String, nullable=False)
+
+    question = relationship("Question", back_populates="options")
 
 
 def initialize_database():
-    # Подключение к базе данных
-    conn = sqlite3.connect('quiz.db')
-    cursor = conn.cursor()
+    engine = create_engine('sqlite:///quiz.db', echo=True)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-    # Создание таблиц
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS questions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        theme TEXT NOT NULL,
-        question_text TEXT NOT NULL,
-        correct_answer TEXT NOT NULL
-    )
-    ''')
-
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS options (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        question_id INTEGER NOT NULL,
-        option_text TEXT NOT NULL,
-        FOREIGN KEY (question_id) REFERENCES questions(id)
-    )
-    ''')
-
-    # Загрузка данных из JSON
     try:
         with open('questions.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
 
         for item in data:
-            # Проверка, существует ли вопрос
-            cursor.execute('''
-            SELECT id FROM questions
-            WHERE theme = ? AND question_text = ? AND correct_answer = ?
-            ''', (item['theme'], item['question'], item['correct_answer']))
-            existing_question = cursor.fetchone()
+            existing_question = session.query(Question).filter_by(
+                theme=item['theme'],
+                question_text=item['question'],
+                correct_answer=item['correct_answer']
+            ).first()
 
             if not existing_question:
-                # Добавление вопроса, если его нет в базе данных
-                cursor.execute('''
-                INSERT INTO questions (theme, question_text, correct_answer)
-                VALUES (?, ?, ?)
-                ''', (item['theme'], item['question'], item['correct_answer']))
+                new_question = Question(
+                    theme=item['theme'],
+                    question_text=item['question'],
+                    correct_answer=item['correct_answer']
+                )
 
-                # Получение ID последнего добавленного вопроса
-                question_id = cursor.lastrowid
-
-                # Добавление вариантов ответов
-                for option in item['options']:
-                    cursor.execute('''
-                    INSERT INTO options (question_id, option_text)
-                    VALUES (?, ?)
-                    ''', (question_id, option))
+                for option_text in item['options']:
+                    new_option = Option(option_text=option_text)
+                    new_question.options.append(new_option)
+                session.add(new_question)
             else:
                 print(f"Вопрос уже существует: {item['question']}")
+
+        session.commit()
     except FileNotFoundError:
         print("Файл questions.json не найден.")
+    finally:
+        session.close()
 
-    # Сохранение изменений
-    conn.commit()
-    conn.close()
+
+if __name__ == "__main__":
+    initialize_database()
